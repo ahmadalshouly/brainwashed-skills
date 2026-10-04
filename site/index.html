@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrainWashed Skills</title>
+<meta name="description" content="Skills people shared for BrainWashed, the private AI that runs on your own computer.">
+<style>
+  :root {
+    --bg: #f7f7f9; --panel: #fff; --text: #16161d; --muted: #5d5d6c; --border: #e3e3ea;
+    --accent: #4f46e5; --accent-soft: #eeedfd; --radius: 14px;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f0f14; --panel: #191921; --text: #ececf1; --muted: #a0a0b0; --border: #2c2c38; --accent: #8b85ff; --accent-soft: #24223f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1 { font-size: 2em; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .lead { color: var(--muted); margin: 0 0 24px; max-width: 640px; }
+  a { color: var(--accent); }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .how div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .how strong { display: block; margin-bottom: 4px; }
+  .how p { margin: 0; color: var(--muted); font-size: 0.92em; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+  input[type=search] { width: 100%; padding: 11px 14px; font: inherit; color: inherit; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+  input[type=search]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 20px; }
+  button { font: inherit; color: inherit; cursor: pointer; background: var(--panel); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; font-size: 0.85em; }
+  button.on { border-color: var(--accent); background: var(--accent-soft); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .skill { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .skill h2 { font-size: 1.05em; margin: 0; overflow-wrap: anywhere; }
+  .by { color: var(--muted); font-size: 0.85em; }
+  .skill p { margin: 0; flex: 1; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 0.75em; padding: 1px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--muted); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row a { font-size: 0.85em; }
+  .empty, .count { color: var(--muted); }
+  .count { font-size: 0.85em; margin: -8px 0 12px; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.85em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>BrainWashed Skills</h1>
+  <p class="lead">Skills teach your BrainWashed AI how to do specific jobs. Each one is a short Markdown file that people shared and a maintainer reviewed.</p>
+
+  <section class="how">
+    <div>
+      <strong>Install one</strong>
+      <p>In the admin page open Skills, then Community. Or run <code>brainwashed skills install &lt;name&gt;</code>. You see the whole skill before it's installed.</p>
+    </div>
+    <div>
+      <strong>Share yours</strong>
+      <p>Press Share next to a skill in the admin page, or open a pull request here. <a href="https://github.com/ahmadalshouly/brainwashed-skills/blob/main/CONTRIBUTING.md">How to write a good one</a>.</p>
+    </div>
+  </section>
+
+  <input id="q" type="search" placeholder="Search skills" aria-label="Search skills" autocomplete="off">
+  <div class="chips" id="cats"></div>
+  <div class="count" id="count"></div>
+  <div class="grid" id="list"><p class="empty">Loading…</p></div>
+
+  <footer>Skills are plain text and never run code, but they do instruct your AI, so every one is reviewed before it's listed. <a href="https://github.com/ahmadalshouly/brainwashed">BrainWashed on GitHub</a>.</footer>
+</main>
+<script>
+  const list = document.getElementById("list");
+  const cats = document.getElementById("cats");
+  const count = document.getElementById("count");
+  const q = document.getElementById("q");
+  let skills = [];
+  let category = new URLSearchParams(location.search).get("category");
+  q.value = new URLSearchParams(location.search).get("q") ?? "";
+
+  const el = (tag, props = {}, ...children) => {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  };
+
+  function render() {
+    const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const shown = skills.filter((s) => {
+      if (category && s.category !== category) return false;
+      const text = `${s.name} ${s.description} ${s.triggers.join(" ")} ${s.author ?? ""}`.toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
+    cats.replaceChildren(
+      ...[null, ...[...new Set(skills.map((s) => s.category).filter(Boolean))].sort()].map((c) =>
+        el("button", { className: c === category ? "on" : "", textContent: c ?? "All", onclick: () => { category = c; render(); } }),
+      ),
+    );
+    count.textContent = `${shown.length} of ${skills.length} skills`;
+    if (!shown.length) return list.replaceChildren(el("p", { className: "empty", textContent: "No skills match." }));
+    list.replaceChildren(
+      ...shown.map((s) => {
+        const copy = el("button", { textContent: "Copy install command" });
+        copy.onclick = async () => {
+          await navigator.clipboard.writeText(`brainwashed skills install ${s.name}`);
+          copy.textContent = "Copied";
+          setTimeout(() => (copy.textContent = "Copy install command"), 1500);
+        };
+        return el(
+          "article",
+          { className: "skill" },
+          el("h2", { textContent: s.name }),
+          s.author ? el("span", { className: "by", textContent: `by ${s.author}` }) : "",
+          el("p", { textContent: s.description }),
+          el("div", { className: "tags" }, ...[s.category, ...s.triggers].filter(Boolean).map((t) => el("span", { className: "tag", textContent: t }))),
+          el("div", { className: "row" }, copy, el("a", { href: s.page, textContent: "Read it" })),
+        );
+      }),
+    );
+  }
+
+  q.addEventListener("input", render);
+  fetch("index.json")
+    .then((r) => r.json())
+    .then((index) => { skills = index.skills; render(); })
+    .catch(() => list.replaceChildren(el("p", { className: "empty", textContent: "Couldn't load the skills list." })));
+</script>
+</body>
+</html>
